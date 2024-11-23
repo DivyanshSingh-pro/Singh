@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Snake Game </title>
+  <meta charset="UTF-8">
+  <link rel="icone" href="C:\Users\ḌĒL̥L̥\Downloads\Screenshot 2024-11-23 135238.png" type="image/png">
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(45deg, #1e3c72, #2a5298);
+    }
+
+    #gameContainer {
+      position: relative;
+    }
+
+    canvas {
+      border: 2px solid #ffffff;
+      box-shadow: 0px 0px 10px 2px rgba(255, 255, 255, 0.5);
+      background-color: black;
+    }
+
+    #scoreboard {
+      margin-bottom: 10px;
+      color: white;
+      font-size: 18px;
+    }
+
+    button {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: #45a049;
+    }
+
+    #gameOverMessage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 24px;
+      text-align: center;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="scoreboard">
+    <span>Score: <span id="score">0</span></span>
+    <span style="margin-left: 30px;">High Score: <span id="highScore">0</span></span>
+    <span style="margin-left: 30px;">Level: <span id="level">1</span></span>
+  </div>
+  <div id="gameContainer">
+    <canvas width="600" height="600" id="game"></canvas>
+    <div id="gameOverMessage">Game Over<br>Score: <span id="finalScore"></span></div>
+  </div>
+  <div id="controls">
+    <button id="pauseButton">Pause</button>
+    <button id="resumeButton">Resume</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const context = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+    const highScoreDisplay = document.getElementById('highScore');
+    const levelDisplay = document.getElementById('level');
+    const gameOverMessage = document.getElementById('gameOverMessage');
+    const finalScoreDisplay = document.getElementById('finalScore');
+    const pauseButton = document.getElementById('pauseButton');
+    const resumeButton = document.getElementById('resumeButton');
+
+    let grid = 16;
+    let count = 0;
+    let score = 0;
+    let highScore = 0;
+    let level = 1;
+    let paused = false;
+    let gameOver = false;
+    let speed = 8;
+
+    const snake = {
+      x: 160,
+      y: 160,
+      dx: grid,
+      dy: 0,
+      cells: [],
+      maxCells: 4
+    };
+
+    const apple = {
+      x: 320,
+      y: 320
+    };
+
+    const barriers = [];
+
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min)) + min;
+    }
+
+    function resetBarriers() {
+      barriers.length = 0;
+      if (level > 1) {
+        for (let i = 0; i < level + 2; i++) {
+          barriers.push({
+            x: getRandomInt(1, 25) * grid,
+            y: getRandomInt(1, 25) * grid
+          });
+        }
+      }
+    }
+
+    function loop() {
+      requestAnimationFrame(loop);
+
+      if (paused || gameOver) return;
+
+      if (++count < speed) return;
+
+      count = 0;
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      snake.x += snake.dx;
+      snake.y += snake.dy;
+
+      if (snake.x < 0) snake.x = canvas.width - grid;
+      else if (snake.x >= canvas.width) snake.x = 0;
+
+      if (snake.y < 0) snake.y = canvas.height - grid;
+      else if (snake.y >= canvas.height) snake.y = 0;
+
+      snake.cells.unshift({ x: snake.x, y: snake.y });
+
+      if (snake.cells.length > snake.maxCells) snake.cells.pop();
+
+      // Draw apple
+      context.fillStyle = 'red';
+      context.fillRect(apple.x, apple.y, grid - 1, grid - 1);
+
+      // Draw barriers
+      context.fillStyle = 'blue';
+      barriers.forEach(barrier => {
+        context.fillRect(barrier.x, barrier.y, grid - 1, grid - 1);
+      });
+
+      // Draw snake
+      context.fillStyle = 'green';
+      snake.cells.forEach((cell, index) => {
+        context.fillRect(cell.x, cell.y, grid - 1, grid - 1);
+
+        // Snake eats apple
+        if (cell.x === apple.x && cell.y === apple.y) {
+          snake.maxCells++;
+          score++;
+          scoreDisplay.textContent = score;
+
+          // Level up
+          if (score % 50 === 0) {
+            level++;
+            levelDisplay.textContent = level;
+            speed = Math.max(2, speed - 1); // Increase speed
+            resetBarriers();
+          }
+
+          apple.x = getRandomInt(0, 25) * grid;
+          apple.y = getRandomInt(0, 25) * grid;
+        }
+
+        // Snake crashes into itself
+        for (let i = index + 1; i < snake.cells.length; i++) {
+          if (cell.x === snake.cells[i].x && cell.y === snake.cells[i].y) {
+            endGame();
+          }
+        }
+
+        // Snake crashes into barriers
+        barriers.forEach(barrier => {
+          if (cell.x === barrier.x && cell.y === barrier.y) {
+            endGame();
+          }
+        });
+      });
+    }
+
+    function endGame() {
+      gameOver = true;
+      gameOverMessage.style.display = 'block';
+      finalScoreDisplay.textContent = score;
+
+      if (score > highScore) {
+        highScore = score;
+        highScoreDisplay.textContent = highScore;
+      }
+
+      snake.dx = snake.dy = 0; // Stop the snake
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.which === 37 && snake.dx === 0) {
+        snake.dx = -grid;
+        snake.dy = 0;
+      } else if (e.which === 38 && snake.dy === 0) {
+        snake.dy = -grid;
+        snake.dx = 0;
+      } else if (e.which === 39 && snake.dx === 0) {
+        snake.dx = grid;
+        snake.dy = 0;
+      } else if (e.which === 40 && snake.dy === 0) {
+        snake.dy = grid;
+        snake.dx = 0;
+      }
+    });
+
+    pauseButton.addEventListener('click', () => {
+      paused = true;
+    });
+
+    resumeButton.addEventListener('click', () => {
+      if (gameOver) {
+        gameOver = false;
+        score = 0;
+        level = 1;
+        speed = 8;
+
+        scoreDisplay.textContent = score;
+        levelDisplay.textContent = level;
+
+        snake.x = 160;
+        snake.y = 160;
+        snake.cells = [];
+        snake.maxCells = 4;
+        snake.dx = grid;
+        snake.dy = 0;
+
+        apple.x = getRandomInt(0, 25) * grid;
+        apple.y = getRandomInt(0, 25) * grid;
+
+        resetBarriers();
+
+        gameOverMessage.style.display = 'none';
+      }
+      paused = false;
+    });
+
+    resetBarriers();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
